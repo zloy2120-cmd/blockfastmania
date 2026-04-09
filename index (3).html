@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Block Fast Mania</title>
+  <meta name="description" content="A block puzzle game built as a Telegram Mini App. No download needed — plays right inside the chat." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0f14; --surface: #141720; --border: #1e2230;
+      --accent: #4ef0c4; --accent2: #f0c44e; --accent3: #f04e7a;
+      --text: #e8ecf0; --muted: #6b7280;
+      --mono: 'Space Mono', monospace; --sans: 'DM Sans', sans-serif;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.6; overflow-x: hidden; }
+    #canvas-bg { position: fixed; inset: 0; pointer-events: none; opacity: 0.18; }
+    .page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 3rem 1.5rem; position: relative; z-index: 1; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 2.5rem 2.5rem 2rem; max-width: 480px; width: 100%; position: relative; overflow: hidden;
+      animation: fadeUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .card::before { content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.6; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .icon-wrap { display: flex; justify-content: center; margin-bottom: 1.5rem; }
+    .game-img { width: 120px; height: 120px; border-radius: 22px; object-fit: cover; border: 1px solid var(--border); box-shadow: 0 0 32px rgba(78,240,196,0.12); }
+    .title-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 0.25rem; }
+    h1 { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+    .tg-channel {
+      display: flex; align-items: center; justify-content: center; width: 28px; height: 28px;
+      border-radius: 50%; background: rgba(78,240,196,0.1); border: 1px solid rgba(78,240,196,0.25);
+      color: var(--accent); text-decoration: none; transition: background 0.15s, border-color 0.15s; flex-shrink: 0;
+    }
+    .tg-channel:hover { background: rgba(78,240,196,0.2); border-color: rgba(78,240,196,0.5); }
+    .tagline { font-family: var(--mono); font-size: 0.72rem; color: var(--accent); text-align: center; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1.75rem; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    .desc { font-size: 0.93rem; color: #adb5bd; line-height: 1.75; margin-bottom: 1.25rem; }
+    .desc strong { color: var(--text); font-weight: 500; }
+    .modes { display: flex; flex-wrap: wrap; gap: 8px; margin: 1rem 0 1.5rem; }
+    .pill { font-family: var(--mono); font-size: 0.7rem; padding: 4px 12px; border-radius: 99px; border: 1px solid; letter-spacing: 0.05em; white-space: nowrap; }
+    .pill-teal { border-color: var(--accent); color: var(--accent); }
+    .pill-amber { border-color: var(--accent2); color: var(--accent2); }
+    .pill-red { border-color: var(--accent3); color: var(--accent3); }
+    .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 1.75rem; }
+    .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 0.5rem; text-align: center; }
+    .stat-val { font-family: var(--mono); font-size: 1.05rem; font-weight: 700; color: var(--accent); display: block; }
+    .stat-lbl { font-size: 0.7rem; color: var(--muted); margin-top: 2px; display: block; }
+    .btn-primary {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: var(--accent); color: #0d1a14; font-family: var(--mono); font-size: 0.85rem;
+      font-weight: 700; letter-spacing: 0.05em; text-decoration: none;
+      padding: 0.9rem 1.5rem; border-radius: 12px; border: none; cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); opacity: 1; }
+    .foot-note { font-size: 0.72rem; color: var(--muted); text-align: center; margin-top: 1.5rem; font-family: var(--mono); }
+    @media (max-width: 420px) { .card { padding: 2rem 1.5rem 1.75rem; } h1 { font-size: 1.25rem; } }
+  </style>
+</head>
+<body>
+<canvas id="canvas-bg"></canvas>
+<main class="page">
+  <div class="card">
+
+    <div class="icon-wrap">
+      <img class="game-img" src="preview.png" alt="Block Fast Mania" />
+    </div>
+
+    <div class="title-row">
+      <h1>Block Fast Mania</h1>
+      <a href="https://t.me/helpervibe" class="tg-channel" target="_blank" rel="noopener" title="Telegram channel">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.804 13.5l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.834.95l-.456.109z"/>
+        </svg>
+      </a>
+    </div>
+    <p class="tagline">Telegram Mini App · Puzzle</p>
+
+    <hr class="divider" />
+
+    <p class="desc">
+      A <strong>block puzzle game</strong> that runs directly in Telegram —
+      no install, no account, just tap and play. Place tetromino-style pieces,
+      clear rows &amp; columns to score. <strong>Combos stack up to ×12.</strong>
+      Crystal blocks give a ×3 bonus for 3 turns when cleared.
+    </p>
+
+    <div class="modes">
+      <span class="pill pill-teal">Classic 10×10</span>
+      <span class="pill pill-teal">Mini 8×8</span>
+      <span class="pill pill-amber">Speedrun 5 min</span>
+      <span class="pill pill-red">Daily Challenge</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><span class="stat-val">4</span><span class="stat-lbl">game modes</span></div>
+      <div class="stat"><span class="stat-val">×12</span><span class="stat-lbl">max combo</span></div>
+      <div class="stat"><span class="stat-val">10d</span><span class="stat-lbl">to build</span></div>
+    </div>
+
+    <a href="https://t.me/BlockFastManiaBot" class="btn-primary" target="_blank" rel="noopener">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.804 13.5l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.834.95l-.456.109z"/>
+      </svg>
+      Play in Telegram
+    </a>
+
+    <p class="foot-note">vanilla js · cloudflare workers · runs smooth on budget android</p>
+  </div>
+</main>
+
+<script>
+  const canvas = document.getElementById('canvas-bg');
+  const ctx = canvas.getContext('2d');
+  const COLOR = ['#4ef0c4', '#f0c44e', '#f04e7a'];
+  const SZ = 14, GAP = 3, STEP = SZ + GAP;
+  let W, H, drops = [];
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    const cols = Math.ceil(W / STEP);
+    drops = Array.from({ length: cols }, () => ({
+      y: Math.random() * -H, speed: 0.4 + Math.random() * 0.8,
+      color: COLOR[Math.floor(Math.random() * COLOR.length)],
+      len: 2 + Math.floor(Math.random() * 4)
+    }));
+  }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drops.forEach((d, i) => {
+      const x = i * STEP;
+      for (let k = 0; k < d.len; k++) {
+        const y = d.y - k * STEP;
+        if (y < -STEP || y > H) continue;
+        ctx.fillStyle = d.color;
+        ctx.globalAlpha = 1 - k / d.len;
+        ctx.fillRect(x, y, SZ, SZ);
+      }
+      ctx.globalAlpha = 1;
+      d.y += d.speed;
+      if (d.y - d.len * STEP > H) {
+        d.y = -STEP; d.speed = 0.4 + Math.random() * 0.8;
+        d.color = COLOR[Math.floor(Math.random() * COLOR.length)];
+      }
+    });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', resize);
+  resize(); draw();
+</script>
+</body>
+</html>
