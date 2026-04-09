@@ -16,7 +16,7 @@
       --mono: 'Space Mono', monospace; --sans: 'DM Sans', sans-serif;
     }
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.6; overflow-x: hidden; }
-    #canvas-bg { position: fixed; inset: 0; pointer-events: none; opacity: 0.18; }
+    #canvas-bg { position: fixed; inset: 0; pointer-events: none; opacity: 0.45; }
     .page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 3rem 1.5rem; position: relative; z-index: 1; }
     .card {
       background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
@@ -25,6 +25,20 @@
     }
     .card::before { content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.6; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Language switcher */
+    .lang-switch {
+      position: absolute; top: 1rem; right: 1rem;
+      display: flex; gap: 4px; z-index: 10;
+    }
+    .lang-btn {
+      font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em;
+      padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s;
+    }
+    .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(78,240,196,0.08); }
+    .lang-btn:hover:not(.active) { border-color: #3a3f52; color: var(--text); }
+
     .icon-wrap { display: flex; justify-content: center; margin-bottom: 1.5rem; }
     .game-img { width: 120px; height: 120px; border-radius: 22px; object-fit: cover; border: 1px solid var(--border); box-shadow: 0 0 32px rgba(78,240,196,0.12); }
     .title-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 0.25rem; }
@@ -39,15 +53,16 @@
     .divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
     .desc { font-size: 0.93rem; color: #adb5bd; line-height: 1.75; margin-bottom: 1.25rem; }
     .desc strong { color: var(--text); font-weight: 500; }
-    .modes { display: flex; flex-wrap: wrap; gap: 8px; margin: 1rem 0 1.5rem; }
-    .pill { font-family: var(--mono); font-size: 0.7rem; padding: 4px 12px; border-radius: 99px; border: 1px solid; letter-spacing: 0.05em; white-space: nowrap; }
-    .pill-teal { border-color: var(--accent); color: var(--accent); }
-    .pill-amber { border-color: var(--accent2); color: var(--accent2); }
-    .pill-red { border-color: var(--accent3); color: var(--accent3); }
-    .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 1.75rem; }
-    .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 0.5rem; text-align: center; }
-    .stat-val { font-family: var(--mono); font-size: 1.05rem; font-weight: 700; color: var(--accent); display: block; }
-    .stat-lbl { font-size: 0.7rem; color: var(--muted); margin-top: 2px; display: block; }
+    /* Modes text line */
+    .modes-text { font-size: 0.875rem; color: #adb5bd; margin: 0 0 1.4rem; line-height: 1.6; }
+    .modes-text strong { color: var(--text); font-weight: 500; }
+
+    /* Feature list — icon column fixed width for alignment */
+    .feat-list { list-style: none; margin: 0 0 1.5rem; display: flex; flex-direction: column; gap: 8px; }
+    .feat-list li { font-size: 0.875rem; color: #adb5bd; display: grid; grid-template-columns: 20px 1fr; align-items: baseline; gap: 8px; line-height: 1.5; }
+    .feat-list li .fi { font-size: 0.85rem; text-align: center; }
+    .feat-list li strong { color: var(--text); font-weight: 500; }
+
     .btn-primary {
       display: flex; align-items: center; justify-content: center; gap: 10px;
       background: var(--accent); color: #0d1a14; font-family: var(--mono); font-size: 0.85rem;
@@ -58,13 +73,22 @@
     .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
     .btn-primary:active { transform: translateY(0); opacity: 1; }
     .foot-note { font-size: 0.72rem; color: var(--muted); text-align: center; margin-top: 1.5rem; font-family: var(--mono); }
-    @media (max-width: 420px) { .card { padding: 2rem 1.5rem 1.75rem; } h1 { font-size: 1.25rem; } }
+    @media (max-width: 420px) {
+      .card { padding: 2rem 1.25rem 1.75rem; }
+      h1 { font-size: 1.25rem; }
+
+    }
   </style>
 </head>
 <body>
 <canvas id="canvas-bg"></canvas>
 <main class="page">
   <div class="card">
+
+    <div class="lang-switch">
+      <button class="lang-btn" id="btn-en" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" id="btn-ru" onclick="setLang('ru')">RU</button>
+    </div>
 
     <div class="icon-wrap">
       <img class="game-img" src="preview1.png" alt="Block Fast Mania" />
@@ -78,77 +102,158 @@
         </svg>
       </a>
     </div>
-    <p class="tagline">Telegram Mini App · Puzzle</p>
+    <p class="tagline" id="tagline">Telegram Mini App · Puzzle</p>
 
     <hr class="divider" />
 
-    <p class="desc">
+    <p class="desc" id="desc-text">
       A <strong>block puzzle game</strong> that runs directly in Telegram —
       no install, no account, just tap and play. Place tetromino-style pieces,
       clear rows &amp; columns to score. <strong>Combos stack up to ×12.</strong>
       Crystal blocks give a ×3 bonus for 3 turns when cleared.
     </p>
 
-    <div class="modes">
-      <span class="pill pill-teal">Classic 10×10</span>
-      <span class="pill pill-teal">Mini 8×8</span>
-      <span class="pill pill-amber">Speedrun 5 min</span>
-      <span class="pill pill-red">Daily Challenge</span>
-    </div>
+    <p class="modes-text" id="modes-text" data-en="<strong>4 modes:</strong> Classic 10×10, Mini 8×8, Speedrun 8×8 - 5 min, Daily Challenge" data-ru="<strong>4 режима:</strong> Классик 10×10, Мини 8×8, Спидран 8×8 - 5 мин, Daily Challenge"><strong>4 modes:</strong> Classic 10×10, Mini 8×8, Speedrun 8×8 · 5 min, Daily Challenge</p>
 
-    <div class="stats">
-      <div class="stat"><span class="stat-val">4</span><span class="stat-lbl">game modes</span></div>
-      <div class="stat"><span class="stat-val">×12</span><span class="stat-lbl">max combo</span></div>
-      <div class="stat"><span class="stat-val">10d</span><span class="stat-lbl">to build</span></div>
-    </div>
+    <ul class="feat-list" id="feat-list">
+      <li><span class="fi">⚡</span><span data-en="<strong>Battle Pass</strong> — Season 1, XP, boosts &amp; cases as rewards" data-ru="<strong>Battle Pass</strong> — Сезон 1, XP, бусты и кейсы в наградах"><strong>Battle Pass</strong> — Season 1, XP, boosts &amp; cases as rewards</span></li>
+      <li><span class="fi">🔥</span><span data-en="<strong>Boosts</strong> — ×2/×3 score, ×2 XP, Combo Shield" data-ru="<strong>Бусты</strong> — ×2/×3 очки, ×2 XP, Щит Комбо"><strong>Boosts</strong> — ×2/×3 score, ×2 XP, Combo Shield</span></li>
+      <li><span class="fi">🎨</span><span data-en="<strong>8 skins</strong> + <strong>10 board themes</strong> — Neon, Hell, Sakura, Space&hellip;" data-ru="<strong>8 скинов</strong> + <strong>10 тем</strong> — Неон, Ад, Сакура, Космос&hellip;"><strong>8 skins</strong> + <strong>10 board themes</strong> — Neon, Matrix, Hell, Sakura, Space&hellip;</span></li>
+      <li><span class="fi">🏆</span><span data-en="<strong>Achievements</strong> — Rookie → Absolute" data-ru="<strong>Ачивки</strong> — Новичок → Абсолют"><strong>Achievements</strong> — Rookie → Absolute (up to 5M score)</span></li>
+      <li><span class="fi">🌐</span><span data-en="<strong>Global leaderboard</strong> across all modes" data-ru="<strong>Таблица рекордов</strong> по всем режимам"><strong>Global leaderboard</strong> across all modes</span></li>
+    </ul>
 
-    <a href="https://t.me/BlockFastManiaBot" class="btn-primary" target="_blank" rel="noopener">
+    <a href="https://t.me/BlockFastManiaBot" class="btn-primary" target="_blank" rel="noopener" id="play-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.804 13.5l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.834.95l-.456.109z"/>
       </svg>
-      Play in Telegram
+      <span data-en="Play in Telegram" data-ru="Играть в Telegram">Play in Telegram</span>
     </a>
 
-    <p class="foot-note">vanilla js · cloudflare workers · runs smooth on budget android</p>
+    <p class="foot-note" id="footnote">vanilla js · cloudflare workers · runs smooth on budget android</p>
   </div>
 </main>
 
 <script>
+  /* ── Language switcher ── */
+  const TEXTS = {
+    en: {
+      tagline: 'Telegram Mini App · Puzzle',
+      desc: `A <strong>block puzzle game</strong> that runs directly in Telegram —
+        no install, no account, just tap and play. Place pieces,
+        clear rows &amp; columns to score. <strong>Combos up to ×12.</strong>
+        Crystal blocks give a ×3 bonus for 3 turns when cleared.`,
+      footnote: 'vanilla js · cloudflare workers · runs smooth on budget android',
+    },
+    ru: {
+      tagline: 'Telegram Mini App · Головоломка',
+      desc: `<strong>Блочная головоломка</strong> прямо в Telegram —
+        без установки, без аккаунта, просто нажми и играй. Размещай фигуры,
+        очищай ряды и столбцы. <strong>Комбо до ×12.</strong>
+        Кристальные блоки дают бонус ×3 на 3 хода при очистке.`,
+      footnote: 'vanilla js · cloudflare workers · плавно работает на бюджетном android',
+    }
+  };
+
+  function detectLang() {
+    const saved = localStorage.getItem('bfm_lang');
+    if (saved) return saved;
+    const nav = navigator.language || navigator.userLanguage || '';
+    return nav.toLowerCase().startsWith('ru') ? 'ru' : 'en';
+  }
+
+  function setLang(lang) {
+    localStorage.setItem('bfm_lang', lang);
+    const t = TEXTS[lang];
+    document.getElementById('tagline').textContent = t.tagline;
+    document.getElementById('desc-text').innerHTML = t.desc;
+    document.getElementById('footnote').textContent = t.footnote;
+
+    // pills & stats labels & feat texts
+    document.querySelectorAll('[data-en]').forEach(el => {
+      const val = el.dataset[lang];
+      if (val !== undefined) el.innerHTML = val;
+    });
+
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+    document.getElementById('btn-ru').classList.toggle('active', lang === 'ru');
+  }
+
+  setLang(detectLang());
+
+  /* ── Canvas background: tetromino-style falling blocks ── */
   const canvas = document.getElementById('canvas-bg');
   const ctx = canvas.getContext('2d');
-  const COLOR = ['#4ef0c4', '#f0c44e', '#f04e7a'];
-  const SZ = 14, GAP = 3, STEP = SZ + GAP;
-  let W, H, drops = [];
+  const COLORS = ['#4ef0c4', '#f0c44e', '#f04e7a', '#a78bfa', '#60a5fa'];
+
+  // Tetromino shapes: each is array of [col, row] offsets
+  const SHAPES = [
+    [[0,0],[1,0],[0,1],[1,1]],        // O
+    [[0,0],[1,0],[2,0],[1,1]],        // T
+    [[0,0],[1,0],[2,0],[3,0]],        // I
+    [[0,0],[1,0],[1,1],[2,1]],        // S
+    [[1,0],[2,0],[0,1],[1,1]],        // Z
+    [[0,0],[0,1],[1,1],[2,1]],        // J
+    [[2,0],[0,1],[1,1],[2,1]],        // L
+    [[0,0],[1,0]],                    // 1×2
+    [[0,0],[1,0],[2,0]],              // 1×3
+    [[0,0],[0,1],[0,2]],              // 3×1
+    [[0,0]],                          // 1×1
+  ];
+
+  const SZ = 18;  // block size
+  const GAP = 3;
+  const STEP = SZ + GAP;
+
+  let W, H, pieces = [];
+
+  function makePiece() {
+    const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    const cols = Math.ceil(W / STEP);
+    const startCol = Math.floor(Math.random() * Math.max(1, cols - 4));
+    return {
+      shape, color,
+      x: startCol * STEP,
+      y: -(3 + Math.random() * 8) * STEP,
+      speed: 0.3 + Math.random() * 0.7,
+      alpha: 0.15 + Math.random() * 0.35,
+    };
+  }
+
   function resize() {
     W = canvas.width = window.innerWidth;
     H = canvas.height = window.innerHeight;
-    const cols = Math.ceil(W / STEP);
-    drops = Array.from({ length: cols }, () => ({
-      y: Math.random() * -H, speed: 0.4 + Math.random() * 0.8,
-      color: COLOR[Math.floor(Math.random() * COLOR.length)],
-      len: 2 + Math.floor(Math.random() * 4)
-    }));
+    const count = Math.floor(W / STEP / 3);
+    pieces = Array.from({ length: count }, makePiece);
+    // stagger start positions
+    pieces.forEach((p, i) => { p.y = -Math.random() * H; });
   }
+
   function draw() {
     ctx.clearRect(0, 0, W, H);
-    drops.forEach((d, i) => {
-      const x = i * STEP;
-      for (let k = 0; k < d.len; k++) {
-        const y = d.y - k * STEP;
-        if (y < -STEP || y > H) continue;
-        ctx.fillStyle = d.color;
-        ctx.globalAlpha = 1 - k / d.len;
-        ctx.fillRect(x, y, SZ, SZ);
-      }
+    pieces.forEach(p => {
+      ctx.globalAlpha = p.alpha;
+      p.shape.forEach(([dc, dr]) => {
+        const bx = p.x + dc * STEP;
+        const by = p.y + dr * STEP;
+        if (by < -STEP * 5 || by > H + STEP) return;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, SZ, SZ, 3);
+        ctx.fill();
+      });
       ctx.globalAlpha = 1;
-      d.y += d.speed;
-      if (d.y - d.len * STEP > H) {
-        d.y = -STEP; d.speed = 0.4 + Math.random() * 0.8;
-        d.color = COLOR[Math.floor(Math.random() * COLOR.length)];
+      p.y += p.speed;
+      // reset when fully off bottom
+      const maxRow = Math.max(...p.shape.map(([,r]) => r));
+      if (p.y + maxRow * STEP > H + STEP * 2) {
+        Object.assign(p, makePiece());
       }
     });
     requestAnimationFrame(draw);
   }
+
   window.addEventListener('resize', resize);
   resize(); draw();
 </script>
